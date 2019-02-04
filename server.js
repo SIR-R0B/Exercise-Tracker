@@ -3,6 +3,7 @@ const app = express()
 const bodyParser = require('body-parser')
 const mongo = require('mongodb')
 const cors = require('cors')
+const moment = require('moment')
 
 const mongoose = require('mongoose')
 mongoose.connect(process.env.MLAB_URI || 'mongodb://localhost/exercise-track',{ useNewUrlParser: true } )
@@ -38,27 +39,26 @@ app.get('/', (req, res) => {
 });
 
 
-/* function to find username by ID
-User.find({id goes here}(err,data)=>{
-    
-    console.log(data);
-    
-  if (err) return (err.stack);
-    
-    res.json(data); 
-    return (null,data);
+function findUserNameById(id,done){
+User.find({_id: id},(err,data)=>{
+  if (err) return done(err.stack);
+  return done(null,data);
+});
+}
   
-  })*/
-  
-
-
 app.post("/api/exercise/add", function (req, res) {
   
   let date = req.body.date;
   
-  if (!req.body.date) {
-    date = new Date();
-   //date = date.getFullYear() + "-" + (1 + date.getMonth()) + "-" + date.getDate();
+  /*handling invalid date entry by setting the invalid date to current date. 
+  To set at 'Invalid date' instead, just remove the 2nd condition below
+  date === 'Invalid date' to just store invalid date
+  */
+  
+  date = moment(date, 'YYYY-MM-DD', true).format('YYYY-MM-DD');
+  
+  if (!req.body.date || date === 'Invalid date') {
+   date = moment().format('YYYY-MM-DD');
   }
   
   var addExercise = new Exercise({
@@ -69,15 +69,24 @@ app.post("/api/exercise/add", function (req, res) {
   });
   addExercise.save(function (err, data) {
     if (err) return (err.stack);
-    //find username using function, returns username where TBD sits
+    //set values based on what successfully saved to Mongo
     
-    res.json({"username": "TBD",
-              "_id": data.userId,
-              "description": data.exerciseDescription,
-              "duration": data.minExerciseDuration,
-              "date": data.exerciseDate
-             }); 
-    return (null,data);
+    let userId = data.userId;
+    let description = data.exerciseDescription;
+    let duration = data.minExerciseDuration;
+    let date = data.exerciseDate;
+    
+    findUserNameById(data.userId,(err, data)=>{
+    //note to self: when calling this function, make sure you pass both params err and data, without err was returning null
+    res.json({"username": data[0].username,
+              "_id": userId,
+              "description": description,
+              "duration": duration,
+              "date": date
+             });
+    
+    });
+    
     })
 });
 
@@ -85,14 +94,69 @@ app.get("/api/exercise/users", function (req, res) {
   
   User.find((err,data)=>{
     
-    console.log(data);
-    
   if (err) return (err.stack);
     
     res.json(data); 
     return (null,data);
   
   })
+  
+});
+
+app.get("/api/exercise/log", function (req, res) {
+  
+  let fromToSearch;
+  let toToSearch;
+  let limitToSearch;
+  let exerciseCount;
+  
+  let userIdToSearch = req.query.userId; //requirements do not specify need for error handling on invalid Id
+  
+if(req.query.from) fromToSearch = req.query.from;
+if(req.query.to) toToSearch = req.query.to;
+if(req.query.limit) limitToSearch = parseInt(req.query.limit);
+  
+  //if the user does not specify the optional query fields, from, to, or limit, assume no min or no max respectively, so as to catch all possible values in the filter
+    if(fromToSearch == undefined) fromToSearch = '0000-00-00';
+    if(toToSearch == undefined) toToSearch = '9999-99-99';
+    if(limitToSearch == undefined) limitToSearch = 9999; //arbitrarily set a theoretical maximum
+  
+  Exercise.countDocuments(
+    {userId: userIdToSearch}).where("exerciseDate").gte(fromToSearch).lte(toToSearch).limit(limitToSearch).exec((err, count) => {
+      if (err) return (err, count);
+    exerciseCount = count;
+  });
+  
+  Exercise.find(
+    {userId: userIdToSearch}).where("exerciseDate").gte(fromToSearch).lte(toToSearch).limit(limitToSearch).exec((err, data) => {
+      if (err) return (err, data);
+    
+    let exerciseLog = [];//for users with no exercises logged, will return this empty array when the endpoint is hit for their Id
+    
+    for(let i = 0; i < data.length; i++){
+     exerciseLog.push({
+       "description": data[i].exerciseDescription, 
+       "duration": data[i].minExerciseDuration, 
+       "date": data[i].exerciseDate
+     }); 
+    }
+    
+    findUserNameById(userIdToSearch,(err, data)=>{
+    
+      res.json({
+        "_id": userIdToSearch,
+      "username": data[0].username,
+      "count": exerciseCount,
+      "log": exerciseLog});
+      
+      
+  });
+    
+    
+    
+      return (null, data);
+    })
+  
   
 });
 

@@ -2,6 +2,7 @@ dependencies:
   body-parser: 1.18.3
   cors: 2.8.5
   express: 4.16.4
+  moment: 2.24.0
   mongodb: 3.1.13
   mongoose: 5.4.9
   shortid: 2.2.14
@@ -271,6 +272,10 @@ packages:
     hasBin: true
     resolution:
       integrity: sha512-KI1+qOZu5DcW6wayYHSzR/tXKCDC5Om4s1z2QJjDULzLcmf3DvzS7oluY4HCTrc+9FiKmWUgeNLg7W3uIQvxtQ==
+  /moment/2.24.0:
+    dev: false
+    resolution:
+      integrity: sha512-bV7f+6l2QigeBBZSM/6yTNq4P2fNpSWj/0e7jQcy87A8e7o2nAfP/34/2ky5Vw4B9S446EtIhodAzkFCcR4dQg==
   /mongodb-core/3.1.11:
     dependencies:
       bson: 1.1.0
@@ -559,6 +564,7 @@ specifiers:
   body-parser: ^1.18.3
   cors: ^2.8.5
   express: ^4.16.4
+  moment: ^2.24.0
   mongodb: ^3.1.11
   mongoose: ^5.4.9
   shortid: ^2.2.14
